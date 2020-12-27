@@ -1,0 +1,8 @@
+alice: boxa
+dnsnet: dnsroot
+dnscom: dnsroot
+ispa: dnsnet
+cold: dnsnet
+jmail: dnscom
+perdu: dnscom
+lexique: dnscom

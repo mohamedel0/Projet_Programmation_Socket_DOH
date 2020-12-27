@@ -1,0 +1,12 @@
+$TTL	60000
+@		IN	SOA	dnsblue.blue.net.	root.dnsblue.blue.net. (
+			1 ; serial
+			28 ; refresh
+			14 ; retry
+			3600000 ; expire
+			60000 ; negative cache ttl
+			)
+@		IN	NS	dnsblue.blue.net.
+dnsblue		IN	A	1.2.3.4
+rt		IN	A	1.2.3.4
+alice		IN	A	41.13.0.50

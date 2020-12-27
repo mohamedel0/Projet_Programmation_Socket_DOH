@@ -1,0 +1,3 @@
+www.lexique.com	IN  A	9.9.9.9
+cold.net	IN  MX	5 smtp.cold.net
+smtp.cold.net	IN  A	213.186.33.5

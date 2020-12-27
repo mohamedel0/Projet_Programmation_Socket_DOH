@@ -1,0 +1,12 @@
+$TTL	60000
+@		IN	SOA	66.194.173.in-addr.arpa.	nobody.nowhere. (
+			1 ; serial
+			28 ; refresh
+			14 ; retry
+			3600000 ; expire
+			0 ; negative cache ttl
+			)
+@				IN	NS	108.66.194.173.in-addr.arpa.
+108.66.194.173.in-addr.arpa.	IN	A	173.194.66.108
+
+108	PTR	dnsjmail.jmail.com.

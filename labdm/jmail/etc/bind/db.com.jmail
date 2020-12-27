@@ -1,0 +1,14 @@
+$TTL	60000
+@		IN	SOA	dnsjmail.jmail.com.	root.dnsjmail.jmail.com. (
+			1 ; serial
+			28 ; refresh
+			14 ; retry
+			3600000 ; expire
+			60000 ; negative cache ttl
+			)
+@		IN	NS	dnsjmail.jmail.com.
+@		IN	MX 5	smtp.jmail.com.
+
+dnsjmail	IN	A	173.194.66.108
+imap		IN	A	173.194.66.108
+smtp		IN	A	173.194.66.108

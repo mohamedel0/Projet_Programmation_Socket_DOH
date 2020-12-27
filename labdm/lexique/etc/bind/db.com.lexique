@@ -1,0 +1,12 @@
+$TTL	60000
+@		IN	SOA	dnslexique.lexique.com.	root.dnslexique.dnslexique.com. (
+			1 ; serial
+			28 ; refresh
+			14 ; retry
+			3600000 ; expire
+			60000 ; negative cache ttl
+			)
+@		IN	NS	dnslexique.lexique.com.
+dnslexique	IN	A	9.9.9.9
+www		IN	A	9.9.9.9
+

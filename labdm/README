@@ -1,0 +1,80 @@
+DNS over HTTP (DoH)
+
+La sécurisation du protocole DNS est une question de sécurité sensible pour plusieurs raisons parmi lesquelles :
+- il est possible pour un attaquant d'orienter l'utilisateur vers une page web de sa conception, en interceptant une requête et en y répondant ou en interceptant une réponse et en lui substituant une autre, ou encore en modifiant l'une ou l'autre; 
+-il n'y a pas de protocole de sécurité prévu dans la version basique de DNS.
+
+Une première tentative a vu le jour pour sécuriser DNS (RFC 7858), mais il est toujours possible de bloquer le port dédié pour forcer l'utilisation du DNS classique. Une autre approche consiste à faire passer la requête DNS dans une connexion HTTP. Les connexions HTTP sont toujours autorisées et la version sécurisée HTTPS (RFC 2818) offre des garanties de confidentialité du traffic.
+
+Le protocole DNS over HTTPS (RFC 8484) propose d'utiliser le protocole HTTPS pour faire transiter les requêtes DNS en conservant les normes et usages de chacun de ces protocoles :
+-la syntaxe HTTP est conservée et enrichie d'un type d'entête;
+-l'ensemble des requêtes DNS peut se faire en DoH.
+
+Dans ce DM, on considère un protocole simplifié en oubliant la sécurisation de HTTP. On cherche donc à faire passer des requêtes DNS dans une connexion HTTP/1.0. Vous allez écrire le code d'un proxy DoH to DNS qui reçoit des requêtes DoH, les transforme en requêtes DNS classiques et les envoie à un résolveur DNS.
+
+1. Le client DoH
+
+Il est conseillé de relire le cours et retravailler le TD1 pour bien comprendre cette partie. L'étude du code du client est aussi une étape importante qui vous mettra sur la voie de l'écriture du proxy.
+
+Le code du client est fourni, dans le fichier "alice/root/senddns.py" du lab, accessible depuis le terminal d'alice en lançant le lab. La syntaxe de la commande est la même que pour la commande "dig", c'est à dire "./senddns.py -t type domain.name" où :
+- type peut être choisi parmi A, MX, NS ;
+- domain.name est le nom de domaine cible de la requête.
+
+Le client construit la requête DNS demandée en binaire (format vu dans le TD1), l'encode en base64url comme requis par le protocole DoH et l'insère dans une variable "dns" qui figure dans l'url transmise par HTTP. Il se comporte ensuite comme un client HTTP qui ouvre une socket vers le serveur (le proxy DoH to DNS) sur le port HTTP et envoie la requête GET. Après réception sur cette même socket, la réponse est déchiffrée et un affichage est proposé à l'écran.
+
+-Construction et lecture des messages DNS se font à l'aide des fonctions pack et unpack du module struct qui transforme des objets (entier sur 1 ou 2 octets, caractère,...) en leur représentation binaire.
+-Le protocole DoH permet d'utiliser les commandes POST et GET d'HTTP pour envoyer une requête DNS, on se contente ici de GET. Il faut alors envoyer dans la variable "dns" de l'url la requête DNS encodée en base64url.
+-Le serveur contacté (champ "Host") est celui de votre configuration (fichier "resolv.conf").
+-Le codage base64url (RFC 4648) code chaque groupe de 6 bits sur un octet avec un padding terminal si nécessaire. À noter la différence entre base64 et base64url (les 2 derniers symboles sont '-' et '_'). Le module base64 de python permet de gérer ce codage en précisant les 2 derniers caractères.
+-Le type de réponse HTTP attendu est le type MIME "application/dns-message", ce sera le type de la réponse DoH envoyée par le proxy.
+
+La requête DoH a le format suivant :
+"
+GET /?dns=b64reqdns HTTP/1.0
+Host: ipserver
+Accept: application/dns-message
+
+" où b64reqdns est la requête DNS encodée en base64url.
+On notera que l'identifiant est 0 pour une requête DoH, la socket TCP suffit à garantir la correspondance requête/réponse.
+
+2. Le proxy DoH
+Vous devez écrire le code d'un proxy qui tourne sur la machine boxa. Il doit réceptionner la requête transmise par le client, changer le codage pour revenir au codage binaire classique des requêtes DNS et envoyer la requête DNS au résolveur (dont l'adresse se trouve dans le fichier "/etc/resolv.conf" de boxa). Ce résolveur s'occupera de faire la séquence de requêtes itératives permettant d'obtenir la réponse. Une fois la réponse DNS obtenue du résolveur, le message doit être transmis au client via une réponse HTTP.
+
+-Le proxy se comporte comme un serveur vis à vis du client, il doit donc être en écoute permanente.
+-Le code doit proposer des messages d'erreurs compréhensibles lorsque la requête HTTP n'est pas GET, ou lorsque l'url ne contient pas de variable "dns".
+-La requête DNS envoyée au résolveur doit respecter le protocole DNS et contenir un champ ID différent pour chaque requête pour assurer la correspondance requête/réponse qui n'est pas donnée dans le protocole DNS classique en UDP.
+-La réponse HTTP doit être au format suivant :
+"
+HTTP/1.0 200 OK
+Content-Type: application/dns-message
+Content-Length: taille_de_la_réponse
+
+réponse_dns
+"
+-La réponse circule au format binaire et n'est pas encodée en base64url.
+
+3. Cache statique
+La seconde étape consiste à implémenter un système de cache statique. C'est une version simple du cache DNS. Le proxy, avant de transférer la requête au résolveur, consulte une base de données d'enregistrements DNS placée dans le fichier "boxa/etc/bind/db.static" et répond directement s'il le peut.
+
+-Lorsqu'une requête DoH arrive et que la base de donnée contient la réponse, le proxy construit lui même la réponse et l'envoie au client. Sinon, le fonctionnement du proxy est inchangé.
+-La construction de la réponse peut se faire de manière similaire à la construction de la requête par le client, tout en contenant au moins 2 sections : une question et une réponse.
+-Le champ additionnel est bien sûr requis lorsque la requête est de type MX ou NS.
+-Dans un premier temps, vous pouvez négliger la compression des noms de domaine.
+
+L'étape suivante consiste à intégrer le système de compression des noms de domaine. La fonction "getname" du client fait la lecture de ces noms de domaine avec compression. Le principe est décrit dans la RFC 2929, section 3.3. Un nom de domaine est décrit par une suite de labels (entre 2 '.' consécutifs), chacun d'entre eux décrit par sa longueur sur un octet puis les caractères sur un octet chacun. Lorsqu'un nom de domaine ou un suffixe a déjà été utilisé, on remplace la suite de labels par un pointeur vers la première occurrence (les 2 bits '11' suivis de la position de cette occurrence dans la réponse DNS sur 14 bits).
+
+Par exemple si l'enregistrement
+
+cold.net        IN  MX  5 smtp.cold.net
+
+est présent dans une réponse avec "cold.net" en position x, lors de l'écriture de "smtp.cold.net", il faut écrire l'octet '00000100' suivi des caractères 's, 'm', 't' et 'p' en ASCII puis le pointeur '11' suivi de x sur 14 bits.
+
+4. Réalisation, retour et évaluation
+
+Le travail est à effectuer en binôme ou individuellement. Vous écrirez un unique fichier "proxydohtodns.py" que vous placerez dans une archive "prenom1-nom1.prenom2-nom2.tar.gz (en remplaçant prénoms et noms par ceux de votre binôme) à déposer au plus tard le 29 novembre 2020 à 23h59 dans le dépôt prévu à cet effet pour votre groupe sur la page celene. Tous les binômes sont autorisés y compris entre Ingé et MIAGE, mais chaque binôme doit rendre un et un seul devoir. 
+
+Les parties 2 et 3 sont chacune évaluées sur 10 points. Des pénalités seront appliquées en cas de retard, d'archive mal formée ou mal nommée...
+
+L'évaluation sera réalisée en testant et en lisant votre code, le test aura lieu dans un lab similaire à celui qui vous est fourni.
+
+Le but est de fournir une application fonctionnelle : en cas d'erreur ou de message d'erreur sur une fonctionnalité, il n'y aura pas de point au titre de l'esthétique ou de l'originalité. 

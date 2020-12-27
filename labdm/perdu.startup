@@ -1,0 +1,5 @@
+ifconfig eth0 10.0.0.3/8
+ifconfig eth1 8.8.8.8/24
+/etc/init.d/quagga start
+/etc/init.d/bind start
+apache2ctl start

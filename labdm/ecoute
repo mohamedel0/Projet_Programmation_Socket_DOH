@@ -1,0 +1,2 @@
+#!/bin/sh
+vdump "$1" | wireshark -i - -k &
